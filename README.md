@@ -1,71 +1,134 @@
-# ComplexityAnalyzer README
+# Code Complexity & Nesting Analyzer (`ComplexityAnalyzer`)
 
-This is the README for your extension "ComplexityAnalyzer". After writing up a brief description, we recommend including the following sections.
+> A Visual Studio Code extension for real-time static code analysis, cyclomatic complexity estimation, and nesting depth tracking.
 
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+## Author Information
+* **Student:** Paramonov Boris Alekseevich (Парамонов Борис Алексеевич)
+* **Group:** M3104
+* **ISU ID:** 558478
+* **University:** ITMO University, Saint Petersburg
+* **Discipline:** Software Development Tools (Инструментальные средства разработки ПО)
+* **Instructor:** Povyshev Vladislav Vyacheslavovich
 
 ---
 
-## Following extension guidelines
+## 1. Overview & Motivation
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+When writing or reviewing code, excessive branching and deep nesting lead to high cognitive load, reduced maintainability, and higher defect rates. 
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+**ComplexityAnalyzer** is a lightweight VS Code extension designed to provide instant feedback on code quality directly inside the editor without requiring external heavy linters or build steps.
 
-## Working with Markdown
+### Key Features:
+* **Cyclomatic Complexity (McCabe metric):** Computes $M = 1 + \sum \text{decision points}$ dynamically.
+* **Maximum Nesting Depth:** Tracks hierarchical block nesting level using an explicit Stack data structure.
+* **Status Bar Indicator:** Real-time metrics display (`$(graph) CC: X | Depth: Y`) with warning color highlights for high-risk code blocks.
+* **Interactive Modal Inspection:** Detailed breakdown of branching constructs (`if`, `for`, `while`, `case`, `catch`, logical operators `&&`, `||`, etc.).
+* **Comments & Literals Stripping:** Robust preprocessing that eliminates false positives inside strings, single-line, and multi-line comments.
+* **Dual Execution Modes:** Analyze either the selected code snippet or the entire active document.
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+---
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+## 2. Architecture & Data Structures
 
-## For more information
+The extension strictly adheres to the laboratory requirements regarding algorithmic logic and the use of fundamental data structures:
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                       VS Code Editor                        │
+│   (Active Editor / Selection Change / Command Invocation)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Source Code Snippet
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                CodeComplexityAnalyzer (src/)                │
+│                                                             │
+│  1. Lexical Preprocessing (strip comments & literals)       │
+│  2. Branch Counting via Map<string, number> (McCabe Metric) │
+│  3. Nesting Tracking via Stack<BlockFrame>                  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ ComplexityReport
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         UI Feedback                         │
+│  • Status Bar Item (Color-coded CC & Nesting Depth)         │
+│  • Modal Dialog (Breakdown, Risk Category: A / B / C / D)   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Enjoy!**
+### Data Structures Employed:
+1. **Generic Stack (`Stack<T>`):**
+   Used for tracking open and closed braces (`{` and `}`). It ensures balanced block analysis and computes the maximum nesting depth ($O(N)$ time complexity).
+2. **Associative Array / Map (`Map<string, number>`):**
+   Used as a frequency dictionary to store and aggregate counts of distinct control flow constructs (`if`, `for`, `while`, `case`, `catch`, logical operators).
+3. **Structured Report Object (`ComplexityReport`):**
+   Encapsulates lines of code (LOC), cyclomatic complexity, max nesting depth, operator breakdown dictionary, and categorical risk rating.
+
+---
+
+## 3. Supported Metrics & Evaluation Scale
+
+| Metric | Threshold (Low) | Threshold (Moderate) | Threshold (High / Critical) |
+| :--- | :---: | :---: | :---: |
+| **Cyclomatic Complexity ($M$)** | $1 - 5$ (Category A) | $6 - 10$ (Category B) | $> 10$ (Category C / D) |
+| **Nesting Depth** | $1 - 3$ | $4$ | $\ge 5$ |
+
+*When complexity exceeds safe thresholds, the Status Bar item dynamically changes background color to alert the developer.*
+
+---
+
+## 4. Extension Commands
+
+The extension contributes the following commands to the VS Code Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
+
+* `Code Complexity: Analyze Selected Code` (`complexityAnalyzer.analyzeSelection`): Evaluates currently highlighted lines or the active file.
+* `Code Complexity: Analyze Active File` (`complexityAnalyzer.analyzeFile`): Runs full inspection on the active document.
+
+---
+
+## 5. Getting Started & Development
+
+### Prerequisites
+* [Node.js](https://nodejs.org/) (LTS recommended)
+* [Visual Studio Code](https://code.visualstudio.com/)
+
+### Installation & Build
+
+1. Clone or open the repository in VS Code:
+   ```bash
+   cd ComplexityAnalyzer
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Compile TypeScript sources:
+   ```bash
+   npm run compile
+   ```
+
+### Running and Debugging in VS Code
+1. Open the project folder in VS Code.
+2. Press **`F5`** (or go to `Run -> Start Debugging`).
+3. A new window titled `[Extension Development Host]` will open.
+4. Open any source file (`.js`, `.ts`, `.c`, `.java`, `.py`, etc.).
+5. Observe the metrics in the bottom-right Status Bar and click the item for the detailed breakdown report.
+
+---
+
+## 6. Generating Documentation
+
+The project includes inline JSDoc/TypeDoc comments for all public classes, methods, and interfaces.
+
+To generate HTML documentation pages:
+```bash
+npx typedoc --out docs src/analyzer.ts
+```
+The output documentation will be saved in the `docs/` directory.
+
+---
+
+## 7. License
+
+Distributed under the MIT License. Developed for academic purposes at ITMO University (2026).
